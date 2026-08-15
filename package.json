@@ -1,0 +1,18 @@
+{
+  "name": "@trellis-io/connector-example",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reference kg connector package and the published manifest JSON Schema, with the CI gate that proves the schema matches the pinned validator.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/trellis-io/connector-example.git"
+  },
+  "scripts": {
+    "gate": "node tools/check.mjs"
+  },
+  "dependencies": {
+    "ajv": "8.20.0"
+  }
+}

@@ -1,0 +1,116 @@
+# The G-6 bidirectional schema gate.
+name: gate
+
+# ═══════════════════════════════════════════════════════════════════════════
+# THE kg PIN  (G-6 (a): pin a kg release by TAG + artifact SHA-256)
+#
+# Everything in this repository is validated by ONE pinned kg release. The
+# published JSON Schema (docs/manifest-schema.json) is documentation; this
+# binary is the oracle. Drift between the two surfaces HERE, at the pin-bump
+# PR, deliberately and reviewably — never silently at an author's desk.
+#
+# To bump the pin:
+#   1. change KG_VERSION to the new tag;
+#   2. replace KG_SHA256 with `sha256sum` of that release's kg-linux-x64 asset;
+#   3. push. If the schema has drifted from the new validator, the gate reds
+#      and the PR is where that conversation happens. Do not weaken a check
+#      in tools/check.mjs to get a green run.
+#
+# KG_VERSION v0.1.3 corresponds to kg main 0e1ae7c7. Note for the pin-bump
+# reviewer: the marketplace platform currently pins kg main 51cffd87, which is
+# OLDER than this release. The two pins are expected to converge on the same
+# release tag (the platform plan's "one pin, zero skew" rule); if they have
+# not, say so on the bump PR rather than letting the delta sit silent.
+#
+# Historical note, so nobody "restores" it: the G-6 ruling named v0.1.2 as the
+# release to pin. v0.1.2 (2026-07-06) PREDATES the connector package system
+# entirely — it has no `kg connector` command at all — so it cannot run this
+# gate. v0.1.3 is the first release that can.
+# ═══════════════════════════════════════════════════════════════════════════
+env:
+  KG_RELEASE_REPO: trellis-io/trellis
+  KG_VERSION: v0.1.3
+  # SHA-256 of that release's `kg-linux-x64` asset, lowercase hex.
+  # PLACEHOLDER — replace when v0.1.3 is cut. The gate fails closed until then.
+  KG_SHA256: "PENDING-SET-AT-v0.1.3-RELEASE"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: schema ↔ validator parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Refuse an unset kg pin
+        run: |
+          set -euo pipefail
+          case "$KG_SHA256" in PENDING-*)
+            echo "::error::KG_SHA256 is still the placeholder. Set it to the sha256 of" \
+                 "the ${KG_VERSION} kg-linux-x64 asset before this gate can run."
+            exit 1 ;;
+          esac
+
+      # The kg release lives in a private repository, so the asset is fetched
+      # with a short-lived token minted from the Trellis kg-access GitHub App
+      # — the same mechanism the trellis-platform gate uses. Fork PRs receive
+      # no secrets and therefore cannot run this gate; forks of the kg release
+      # repositories are not permitted, so there is no fork path to support.
+      - name: Mint a kg-release access token
+        id: kg-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.KG_APP_ID }}
+          private-key: ${{ secrets.KG_APP_PRIVATE_KEY }}
+          owner: trellis-io
+          repositories: trellis
+
+      - name: Download and verify the pinned kg binary
+        env:
+          GH_TOKEN: ${{ steps.kg-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          gh release download "$KG_VERSION" \
+            --repo "$KG_RELEASE_REPO" \
+            --pattern kg-linux-x64 \
+            --output kg
+          echo "${KG_SHA256}  kg" | sha256sum --check --strict -
+          chmod +x kg
+          ./kg connector validate --help > /dev/null
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # ── The gate proper ────────────────────────────────────────────────
+      # VALID   connector/            -> ajv PASSES and kg validate PASSES,
+      #                                  and dev-run emits records from a
+      #                                  stem-bound fixture on every request.
+      # INVALID counter-examples/<r>/ -> ajv FAILS  and kg validate FAILS
+      #                                  with exactly the declared KGCP-* code.
+      - name: Schema ↔ validator parity (both directions)
+        run: node tools/check.mjs --kg ./kg
+
+      # The package source must also be byte-canonical and self-consistent:
+      # kg refuses any non-canonical JSON, and a manifest whose inventories or
+      # digests have drifted from the files on disk.
+      - name: Package JSON is canonical
+        run: python3 tools/canonicalize.py --check connector/kg-connector.json connector/mappings/*.json connector/fixtures/*.json counter-examples/*/kg-connector.json
+
+      - name: Manifest inventories and digests are current
+        run: python3 tools/sync-manifest.py --check connector/
+
+      # The archive the marketplace would build from this source must build.
+      - name: Package builds
+        run: ./kg connector package connector/ --tier verified --out /tmp/reference.kgcp --json
