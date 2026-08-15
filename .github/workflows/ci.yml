@@ -12,14 +12,19 @@ name: gate
 # To bump the pin:
 #   1. change KG_VERSION to the new tag;
 #   2. replace KG_SHA256 with `sha256sum` of that release's kg-linux-x64 asset;
-#   3. push. If the schema has drifted from the new validator, the gate reds
+#   3. record the commit that tag points at, on the line below;
+#   4. push. If the schema has drifted from the new validator, the gate reds
 #      and the PR is where that conversation happens. Do not weaken a check
 #      in tools/check.mjs to get a green run.
 #
-# KG_VERSION v0.1.3 corresponds to kg main 0e1ae7c7. Note for the pin-bump
-# reviewer: the marketplace platform currently pins kg main 51cffd87, which is
-# OLDER than this release. The two pins are expected to converge on the same
-# release tag (the platform plan's "one pin, zero skew" rule); if they have
+# KG_VERSION v0.1.3 is CUT BUT NOT YET TAGGED at the time of writing — record
+# its commit here when it is. The schema and counter-examples in this repo were
+# authored and verified against kg main 0e1ae7c7; if v0.1.3 is tagged at a later
+# commit, that delta is real and the gate is what surfaces it.
+#
+# Note for the pin-bump reviewer: the marketplace platform currently pins kg
+# main 51cffd87, OLDER than both. The two pins are expected to converge on the
+# same release tag (the platform plan's "one pin, zero skew" rule); if they have
 # not, say so on the bump PR rather than letting the delta sit silent.
 #
 # Historical note, so nobody "restores" it: the G-6 ruling named v0.1.2 as the
