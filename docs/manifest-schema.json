@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/trellis-io/connector-example/blob/main/docs/manifest-schema.json",
+  "title": "kg connector package manifest (kg-connector.json), manifestSchemaVersion 1",
+  "description": "Hand-authored JSON Schema for the kg connector package manifest. This document is DOCUMENTATION, not the authority: `kg connector validate` is the only oracle. CI proves the two agree in both directions (see .github/workflows/ci.yml) — every valid example passes both, and every counter-example in counter-examples/ fails both. Rules kg enforces that a JSON Schema cannot express (cross-reference integrity, ontology label membership, digest equality with real bytes, canonical JSON encoding) are listed in docs/authoring.md and are deliberately absent here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "manifestSchemaVersion",
+    "identity",
+    "capability",
+    "semanticFiles",
+    "fixtureFiles",
+    "documentationFiles"
+  ],
+  "properties": {
+    "kind": {
+      "const": "kg.connector.package",
+      "description": "Exact discriminator. kg-core package/manifest.rs MANIFEST_KIND."
+    },
+    "manifestSchemaVersion": {
+      "const": 1,
+      "description": "Exact schema version. kg-core package/manifest.rs MANIFEST_SCHEMA_VERSION; any other value is KGCP-MANIFEST-VERSION."
+    },
+    "identity": { "$ref": "#/$defs/identity" },
+    "capability": { "$ref": "#/$defs/capability" },
+    "semanticFiles": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Every mappings/*.json member, strictly sorted by path and duplicate-free, each with the lowercase SHA-256 of its exact canonical bytes. Must equal the archive's real mappings/ inventory.",
+      "items": { "$ref": "#/$defs/semanticFile" }
+    },
+    "fixtureFiles": {
+      "type": "array",
+      "description": "Every fixtures/*.json member, strictly sorted. A request binds to the fixture whose file STEM equals the request id.",
+      "items": { "$ref": "#/$defs/fixturePath" }
+    },
+    "documentationFiles": {
+      "type": "array",
+      "description": "Every docs/*.md member, strictly sorted.",
+      "items": { "$ref": "#/$defs/docPath" }
+    }
+  },
+  "$defs": {
+    "registryId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32,
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "description": "Canonical connector id: ASCII, 1-32 bytes, first byte a lowercase letter, no trailing hyphen, no doubled hyphen. kg-core registry/identity.rs shape_ok."
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registryId", "family", "systemKey", "version"],
+      "properties": {
+        "registryId": { "$ref": "#/$defs/registryId" },
+        "family": {
+          "enum": ["vcs", "work-trackers", "docs", "design", "meetings"],
+          "description": "One of the closed six families MINUS `sql`: kg-core package/manifest.rs refuses sql packages outright ('SQL packages are outside the declarative REST/JSON v1 format'), so `sql` is not a legal manifest value even though the Family wire vocabulary carries it."
+        },
+        "systemKey": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)?$",
+          "description": "One or two dot-separated segments, each starting with a lowercase letter and containing only lowercase letters and digits — no hyphens. kg-core registry/doc.rs SystemKey::parse. Family-specific arity (docs.<leaf> and meetings.<leaf> require two segments; vcs, work-trackers and design require exactly one) is a cross-field rule enforced by kg, not by this schema."
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "description": "Exact major.minor.patch, no leading zeroes, no pre-release or build metadata. kg-core registry/doc.rs Version::parse, which additionally bounds each segment to a u16 — a range this pattern cannot express."
+        }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "publicOrigins",
+        "credentials",
+        "requests",
+        "responseUrls",
+        "redirects",
+        "ontology"
+      ],
+      "properties": {
+        "publicOrigins": {
+          "type": "array",
+          "minItems": 1,
+          "description": "The declared egress surface. Must be non-empty.",
+          "items": { "$ref": "#/$defs/origin" }
+        },
+        "credentials": {
+          "type": "array",
+          "description": "Credential slots. May be empty — an anonymous connector is legal.",
+          "items": { "$ref": "#/$defs/credential" }
+        },
+        "requests": {
+          "type": "array",
+          "minItems": 1,
+          "description": "The declared request authorities. Must be non-empty.",
+          "items": { "$ref": "#/$defs/request" }
+        },
+        "responseUrls": { "$ref": "#/$defs/responseUrls" },
+        "redirects": {
+          "const": "disabled",
+          "description": "The only legal value in v1. kg-core package/manifest.rs RedirectPolicy has exactly one variant."
+        },
+        "ontology": {
+          "type": "array",
+          "description": "Declared label emissions. kg additionally checks each label against the shipped ontology (existence, role agreement, tier emittability, primary/marker eligibility) — membership checks this schema deliberately does not duplicate.",
+          "items": { "$ref": "#/$defs/ontologyDeclaration" }
+        }
+      }
+    },
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "origin"],
+      "properties": {
+        "id": { "$ref": "#/$defs/registryId" },
+        "origin": {
+          "type": "string",
+          "pattern": "^https://([a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*|\\[[0-9a-f:]+\\]):[1-9][0-9]{0,4}$",
+          "description": "Canonical origin: https only, lowercase ASCII host (or a bracketed IPv6 literal), an EXPLICIT non-zero port with no leading zeroes, and nothing else — no trailing slash, userinfo, path, query or fragment. kg-core package/manifest.rs canonical_origin."
+        }
+      }
+    },
+    "credential": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slot", "authKind", "placement", "sendTo"],
+      "properties": {
+        "slot": { "$ref": "#/$defs/registryId" },
+        "authKind": { "enum": ["bearer", "basic", "api-key"] },
+        "placement": { "enum": ["authorization-header", "named-header"] },
+        "headerName": {
+          "type": "string",
+          "pattern": "^[a-z0-9!#$%&'*+.^_`|~-]+$",
+          "description": "Required for api-key, forbidden otherwise. Must be a lowercase HTTP token and must not be one of the hop-by-hop or otherwise reserved names kg refuses (authorization, cookie, set-cookie, host, connection, keep-alive, proxy-authenticate, proxy-authorization, te, trailer, transfer-encoding, upgrade, content-length) — that deny-list is enforced by kg, not by this pattern."
+        },
+        "sendTo": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Origin ids this credential may be sent to. Must be non-empty, duplicate-free, and every entry must name a declared origin (the cross-reference is kg's check).",
+          "items": { "$ref": "#/$defs/registryId" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "authKind": { "const": "api-key" } }, "required": ["authKind"] },
+          "then": {
+            "required": ["headerName"],
+            "properties": {
+              "headerName": true,
+              "placement": { "const": "named-header" }
+            }
+          },
+          "else": {
+            "not": { "required": ["headerName"] },
+            "properties": { "placement": { "const": "authorization-header" } }
+          }
+        }
+      ]
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "method", "origin", "pathTemplate"],
+      "properties": {
+        "id": { "$ref": "#/$defs/registryId" },
+        "method": {
+          "const": "GET",
+          "description": "v1 connectors are read-only; GET is the only legal method."
+        },
+        "origin": { "$ref": "#/$defs/registryId" },
+        "pathTemplate": {
+          "type": "string",
+          "pattern": "^/(?!/)[^\\\\?#]*$",
+          "not": { "pattern": "(^|/)\\.\\.?(/|$)" },
+          "description": "Absolute path beginning with a single slash. No backslash, query or fragment, no protocol-relative '//' prefix, and no '.' or '..' segments. Percent-escapes that decode to '.', '/', '\\' or a control character are additionally refused by kg. kg-core package/manifest.rs valid_path_template."
+        },
+        "credential": {
+          "$ref": "#/$defs/registryId",
+          "description": "Optional. When present must name a declared credential slot."
+        }
+      }
+    },
+    "responseUrls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "origins"],
+      "description": "Whether URLs found INSIDE a response body may be followed. The two modes constrain `origins` in opposite directions.",
+      "properties": {
+        "mode": { "enum": ["none", "guarded-declared-origins"] },
+        "origins": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/registryId" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "none" } }, "required": ["mode"] },
+          "then": { "properties": { "origins": { "type": "array", "maxItems": 0 } } },
+          "else": { "properties": { "origins": { "type": "array", "minItems": 1 } } }
+        }
+      ]
+    },
+    "ontologyDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "role", "kind"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]{0,63}$",
+          "description": "Shape only. Whether the label EXISTS in kg's ontology, carries the declared role, and is emittable at this tier is checked by kg (KGCP-ONTOLOGY-*)."
+        },
+        "role": {
+          "enum": [
+            "artifact",
+            "event",
+            "subtype",
+            "actor",
+            "container",
+            "derived",
+            "infra",
+            "marker"
+          ]
+        },
+        "kind": { "enum": ["primary", "reference", "marker"] }
+      }
+    },
+    "semanticFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^mappings/[^/]+\\.json$",
+          "description": "A direct child of mappings/ with a .json extension. Nested directories are not v1 package vocabulary."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Lowercase hex SHA-256 of the mapping's exact canonical bytes. Digest EQUALITY against the real file is kg's check."
+        }
+      }
+    },
+    "fixturePath": {
+      "type": "string",
+      "pattern": "^fixtures/[^/]+\\.json$",
+      "description": "A direct child of fixtures/ with a .json extension."
+    },
+    "docPath": {
+      "type": "string",
+      "pattern": "^docs/[^/]+\\.md$",
+      "description": "A direct child of docs/ with a .md extension."
+    }
+  }
+}

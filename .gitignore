@@ -1,0 +1,5 @@
+node_modules/
+*.kgcp
+kg
+kg-linux-x64
+__pycache__/
