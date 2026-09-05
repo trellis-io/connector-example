@@ -21,8 +21,8 @@ name: gate
 # is kg main cb43361e; the proposed tag commit is the head of kg main when the
 # owner cuts it (cfbaadc6 on 2026-09-05), or fbff2e4f (the re-signed connector
 # registry, 411 commits after the bump) if the tag must match the marketplace
-# platform's layer pin exactly — that pin's bump to fbff2e4f is the platform's
-# PR #310, still open, and the two pins are expected to converge on one
+# platform's layer pin exactly — that pin moved to fbff2e4f with the platform's
+# PR #310 (merged 2026-09-05), and the two pins are expected to converge on one
 # release tag (the platform plan's "one pin, zero skew" rule). The signed registry and the package validator are
 # byte-identical at fbff2e4f and cfbaadc6. Record the commit the tag actually
 # points at here when it is cut.
