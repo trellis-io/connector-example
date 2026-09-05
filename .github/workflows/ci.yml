@@ -18,15 +18,18 @@ name: gate
 #      in tools/check.mjs to get a green run.
 #
 # KG_VERSION v0.1.3 is NOT YET TAGGED at the time of writing. The version bump
-# is kg main cb43361e; the proposed tag commit is kg main fbff2e4f (the
-# re-signed connector registry, 411 commits later), because the marketplace
-# platform's layer pin moved to fbff2e4f on 2026-09-04 and the two pins are
-# expected to converge on one release tag (the platform plan's "one pin, zero
-# skew" rule). Record the commit the tag actually points at here when it is cut.
+# is kg main cb43361e; the proposed tag commit is the head of kg main when the
+# owner cuts it (cfbaadc6 on 2026-09-05), or fbff2e4f (the re-signed connector
+# registry, 411 commits after the bump) if the tag must match the marketplace
+# platform's layer pin exactly — that pin moved to fbff2e4f on 2026-09-04 and
+# the two pins are expected to converge on one release tag (the platform plan's
+# "one pin, zero skew" rule). The signed registry and the package validator are
+# byte-identical at fbff2e4f and cfbaadc6. Record the commit the tag actually
+# points at here when it is cut.
 # The schema and counter-examples in this repo were authored against kg main
-# 0e1ae7c7 and re-verified against fbff2e4f on 2026-09-04 with tools/check.mjs;
-# if the tag lands on a later commit, that delta is real and the gate is what
-# surfaces it.
+# 0e1ae7c7 and re-verified with tools/check.mjs against fbff2e4f on 2026-09-04
+# and against cfbaadc6's validator on 2026-09-05; if the tag lands on a later
+# commit, that delta is real and the gate is what surfaces it.
 #
 # Historical note, so nobody "restores" it: the G-6 ruling named v0.1.2 as the
 # release to pin. v0.1.2 (2026-07-06) PREDATES the connector package system
