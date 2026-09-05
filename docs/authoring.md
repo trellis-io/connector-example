@@ -23,12 +23,10 @@ vocabulary. Symlinks are refused. Any other root file, any other root
 directory, any other extension is a whole-package refusal
 (`KGCP-ARCHIVE-ENTRY`).
 
-> **This bites at submission.** A repository with a root `README.md`,
-> `LICENSE`, or `.github/` cannot be submitted as a package repo. See the
-> README's [`git subtree`](../README.md#4-submit--hand-over-a-public-repo-and-a-tag)
-> recipe for cutting a submittable mirror. This repository is laid out that way
-> deliberately: the package lives in `connector/`, and the manual, schema and
-> CI live at the root where humans expect them.
+> **This is the package directory, not your repository.** Keep the package in
+> its own directory (`connector/` here) and your `README.md`, `LICENSE` and
+> `.github/` at the repository root; the pipeline finds the package inside the
+> repository (§8). This repository is laid out that way deliberately.
 
 ## 2. Canonical JSON
 
@@ -61,10 +59,13 @@ which is annotated with the kg source that owns each rule. The highlights:
 
 **`identity`** — `registryId` is a canonical lowercase id (1–32 bytes, leading
 lowercase letter, no doubled or trailing hyphen). `family` is one of `vcs`,
-`work-trackers`, `docs`, `design`, `meetings`. `systemKey` is one or two dotted
-segments of lowercase letters and digits — **no hyphens** — and its arity is
-family-dependent: `docs.<leaf>` and `meetings.<leaf>` take two segments; `vcs`,
-`work-trackers` and `design` take exactly one. `version` is exact
+`work-trackers`, `docs`, `design`, `meetings`, `crm`, `identity`, `chat` (`sql`
+is refused: SQL packages are outside the declarative REST/JSON v1 format).
+`systemKey` is one or two dotted segments of lowercase letters, digits and
+hyphens (each segment starts with a letter; no uppercase, no underscores), and
+its arity is family-dependent: `docs.<leaf>`, `meetings.<leaf>` and
+`chat.<leaf>` take two segments; `vcs`, `work-trackers` and `design` take
+exactly one; `crm` and `identity` carry no arity rule. `version` is exact
 `major.minor.patch`.
 
 > `sql` is a family in kg's wire vocabulary but **not** a legal manifest value:
@@ -176,12 +177,19 @@ the drift would be silent:
 Because of this split, a counter-example must break a rule the schema encodes —
 otherwise it could not fail *both* gates, which is what the CI check requires.
 
-## 8. Known rough edge
+## 8. Package location inside a repository
 
-The root-entry strictness in §1 means a real author's connector repository
-cannot carry a root `README.md`, `LICENSE` or `.github/` — the files GitHub
-itself pushes people to add. Today the workaround is the `git subtree` mirror.
-This is a UX landmine worth a kg-side ruling before external authors arrive:
-either `validate` tolerates a small set of benign root entries, or the
-marketplace pipeline pre-filters them before validation. Raised from this
-repository's build; tracked on the kg side.
+The root-entry strictness in §1 applies to the **package directory**, not to
+your repository. The marketplace pipeline locates the package inside the
+fetched tree: the repository root if it holds `kg-connector.json`, otherwise
+the one `kg-connector.json` at the shallowest depth below it. A repository
+with a root `README.md`, `LICENSE` and `.github/` and the package under a
+sub-directory such as `connector/` is therefore submittable as-is — this
+repository is laid out exactly that way. Two refusals cover the failure
+modes: `MKT-PACKAGE-NOT-FOUND` when no manifest exists anywhere in the tree,
+and `MKT-PACKAGE-AMBIGUOUS` when two or more sit at the same shallowest
+depth.
+
+Locally, `kg connector validate`, `dev-run` and `package` still take the
+package directory as their argument (`connector/` here), never the repository
+root.

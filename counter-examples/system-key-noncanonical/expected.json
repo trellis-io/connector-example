@@ -1,1 +1,1 @@
-{"code":"KGCP-MANIFEST-IDENTITY","rule":"systemKey segments admit only lowercase letters and digits"}
+{"code":"KGCP-MANIFEST-IDENTITY","rule":"systemKey segments admit only lowercase letters, digits and hyphens"}

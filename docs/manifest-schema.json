@@ -57,13 +57,13 @@
       "properties": {
         "registryId": { "$ref": "#/$defs/registryId" },
         "family": {
-          "enum": ["vcs", "work-trackers", "docs", "design", "meetings"],
-          "description": "One of the closed six families MINUS `sql`: kg-core package/manifest.rs refuses sql packages outright ('SQL packages are outside the declarative REST/JSON v1 format'), so `sql` is not a legal manifest value even though the Family wire vocabulary carries it."
+          "enum": ["vcs", "work-trackers", "docs", "design", "meetings", "crm", "identity", "chat"],
+          "description": "The connector family wire vocabulary MINUS `sql`: kg-core package/manifest.rs refuses sql packages outright ('SQL packages are outside the declarative REST/JSON v1 format'), so `sql` is not a legal manifest value even though the Family wire vocabulary carries it. `crm`, `identity` and `chat` joined the vocabulary between kg main 0e1ae7c7 and fbff2e4f (2026-09-04 re-verification). Arity is a cross-field rule enforced by kg, not by this schema: docs.<leaf>, meetings.<leaf> and chat.<leaf> take two systemKey segments; vcs, work-trackers and design take exactly one; crm and identity carry no arity rule."
         },
         "systemKey": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)?$",
-          "description": "One or two dot-separated segments, each starting with a lowercase letter and containing only lowercase letters and digits — no hyphens. kg-core registry/doc.rs SystemKey::parse. Family-specific arity (docs.<leaf> and meetings.<leaf> require two segments; vcs, work-trackers and design require exactly one) is a cross-field rule enforced by kg, not by this schema."
+          "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)?$",
+          "description": "One or two dot-separated segments, each starting with a lowercase letter and containing only lowercase letters, digits and hyphens (hyphens admitted since kg main 86b3039e, 2026-09-02, for keys such as azdo-repos). kg-core registry/doc.rs SystemKey::parse. Family-specific arity (docs.<leaf> and meetings.<leaf> require two segments; vcs, work-trackers and design require exactly one) is a cross-field rule enforced by kg, not by this schema."
         },
         "version": {
           "type": "string",
