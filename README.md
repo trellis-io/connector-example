@@ -98,20 +98,26 @@ tag to a commit SHA and derives everything from it, including the signed
 archive. You install the Trellis GitHub App on the repo; that installation *is*
 the proof you control it.
 
-⚠️ **A submitted repository's root must be the package itself.** kg refuses any
-root file except `kg-connector.json` and any root directory except `mappings/`,
-`fixtures/` and `docs/` — so a repo with a root `README.md`, `LICENSE` or
-`.github/` **cannot be submitted as-is**. That includes *this* repository.
+**Where the package may live in your repository.** The pipeline locates the
+package inside the fetched tree by one rule:
 
-Cut a submittable mirror from `connector/` in one command:
+| Your repository | What is submitted |
+|---|---|
+| `kg-connector.json` at the repository root | the root is the package |
+| exactly one `kg-connector.json` at the shallowest depth below the root (for example `connector/`) | that directory is the package — a depth-1 hit beats any deeper one, so `connector/` here wins over `counter-examples/*` |
+| no `kg-connector.json` anywhere | refused, `MKT-PACKAGE-NOT-FOUND` |
+| two or more at the same shallowest depth | refused, `MKT-PACKAGE-AMBIGUOUS` — ambiguity is never resolved by guessing |
 
-```bash
-git remote add mirror https://github.com/<you>/<your-connector>.git
-git subtree push --prefix=connector mirror main
-```
+So a repository shaped like every real repository — a root `README.md`,
+`LICENSE`, `.github/`, and the package in a sub-directory — is submittable
+**as-is**. That includes *this* repository: submit its URL and a tag, and
+`connector/` is what gets validated, packaged and signed.
 
-The mirror's root is now `kg-connector.json` + `mappings/` + `fixtures/` +
-`docs/`. Tag it, then submit that repo URL and tag.
+The package directory itself is still strict: inside it, only
+`kg-connector.json`, `mappings/`, `fixtures/` and `docs/` are admitted (see
+[docs/authoring.md §1](docs/authoring.md#1-the-package-vocabulary)). Keep your
+repository files at the root and the package in its own directory, and both
+rules are satisfied.
 
 ---
 
